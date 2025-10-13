@@ -1,0 +1,291 @@
+// GoMart E-commerce Platform - Prisma Schema
+// MongoDB Database Configuration for Ghana-focused ecommerce platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Customer Entity - User management with Ghana-specific fields
+model Customer {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phoneNumber String   @unique
+  password    String
+  region      String   // Ghana regions: Greater Accra, Ashanti, etc.
+  city        String
+  address     String
+  dateJoined  DateTime @default(now())
+  isActive    Boolean  @default(true)
+  
+  // Relationships
+  orders      Order[]
+  reviews     Review[]
+  cart        Cart?
+  
+  @@map("customers")
+}
+
+// Category Entity - Product categorization
+model Category {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  categoryName String   @unique
+  description String?
+  
+  // Relationships
+  products    Product[]
+  
+  @@map("categories")
+}
+
+// Vendor Entity - Seller management
+model Vendor {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  vendorName      String
+  email           String   @unique
+  phoneNumber     String   @unique // Should be unique
+  businessAddress String
+  region          String   // Ghana regions
+  city            String
+  businessLicense String?  // Business registration number
+  taxId           String?  // Tax identification
+  joinedDate      DateTime @default(now())
+  isVerified      Boolean  @default(false)
+  isActive        Boolean  @default(true) // Account status
+  rating          Float?   // Average vendor rating
+  
+  // Relationships
+  products        Product[]
+  
+  // Performance indexes
+  @@index([isVerified])
+  @@index([isActive])
+  @@index([region])
+  
+  @@map("vendors")
+}
+
+// Product Entity - Main product catalog
+model Product {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  productName  String
+  description  String
+  price        Float    // Stored in Ghana Cedi (GHS) - must be positive
+  stockQuantity Int     // Must be non-negative
+  imageURL     String?
+  sku          String?  // Stock Keeping Unit
+  brand        String?
+  weight       Float?   // For shipping calculations (kg)
+  isActive     Boolean  @default(true) // Soft delete flag
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Foreign Keys
+  categoryId   String   @db.ObjectId
+  vendorId     String   @db.ObjectId
+  
+  // Relationships
+  category     Category    @relation(fields: [categoryId], references: [id])
+  vendor       Vendor      @relation(fields: [vendorId], references: [id])
+  orderItems   OrderItem[]
+  reviews      Review[]
+  cartItems    CartItem[]
+  
+  // Performance indexes
+  @@index([categoryId])
+  @@index([vendorId])
+  @@index([price])
+  @@index([createdAt])
+  @@index([isActive])
+  @@index([sku])
+  
+  @@map("products")
+}
+
+// Courier Entity - Delivery service providers
+model Courier {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  courierName String
+  phoneNumber String
+  email       String?
+  region      String   // Service area in Ghana
+  isActive    Boolean  @default(true)
+  
+  // Relationships
+  shipments   Shipping[]
+  
+  @@map("couriers")
+}
+
+// Order Entity - Customer orders
+model Order {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber   String   @unique // Human-readable order number (e.g., "GM-2024-001")
+  orderDate     DateTime @default(now())
+  status        String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
+  totalAmount   Float    // In Ghana Cedi (GHS)
+  discountAmount Float?  @default(0) // Discount applied
+  notes         String?  // Special instructions
+  currency      String   @default("GHS") // Ghana Cedi
+  updatedAt     DateTime @updatedAt
+  
+  // Foreign Keys
+  customerId  String   @db.ObjectId
+  
+  // Relationships
+  customer    Customer   @relation(fields: [customerId], references: [id])
+  payment     Payment?
+  shipping    Shipping?
+  orderItems  OrderItem[]
+  
+  // Performance indexes
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  
+  @@map("orders")
+}
+
+// OrderItem Entity - Individual items in an order
+model OrderItem {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int    // Must be positive
+  unitPrice Float  // Price at time of order in GHS
+  subtotal  Float  // quantity * unitPrice
+  
+  // Foreign Keys
+  orderId   String @db.ObjectId
+  productId String @db.ObjectId
+  
+  // Relationships
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  // Performance indexes
+  @@index([orderId])
+  @@index([productId])
+  
+  @@map("orderItems")
+}
+
+// Payment Entity - Payment processing with Mobile Money support
+model Payment {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  paymentDate          DateTime @default(now())
+  amount               Float    // In Ghana Cedi (GHS)
+  paymentMethod        String   // MTN Mobile Money, Vodafone Cash, AirtelTigo Money, Bank Transfer, Cash
+  transactionReference String?  // Mobile Money transaction ID
+  status               String   @default("pending") // pending, completed, failed, refunded
+  fees                 Float?   @default(0) // Transaction fees
+  currency             String   @default("GHS") // Ghana Cedi
+  
+  // Foreign Keys
+  orderId              String   @unique @db.ObjectId
+  
+  // Relationships
+  order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  // Performance indexes
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([paymentDate])
+  
+  @@map("payments")
+}
+
+// Shipping Entity - Order delivery management
+model Shipping {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  shippingAddress String
+  city            String
+  region          String    // Ghana region
+  postalCode      String?   // Ghana postal codes
+  shippingDate    DateTime?
+  deliveryDate    DateTime?
+  estimatedDelivery DateTime? // Estimated delivery date
+  trackingNumber  String?   // Courier tracking number
+  shippingCost    Float?    @default(0) // Shipping fee in GHS
+  status          String    @default("pending") // pending, shipped, in_transit, delivered, failed
+  notes           String?   // Delivery instructions
+  
+  // Foreign Keys
+  orderId         String    @unique @db.ObjectId
+  courierId       String    @db.ObjectId
+  
+  // Relationships
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courier         Courier   @relation(fields: [courierId], references: [id])
+  
+  // Performance indexes
+  @@index([courierId])
+  @@index([status])
+  @@index([trackingNumber])
+  
+  @@map("shipping")
+}
+
+// Review Entity - Product reviews and ratings
+model Review {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating     Int      // 1-5 star rating
+  comment    String?
+  createdAt  DateTime @default(now())
+  
+  // Foreign Keys
+  customerId String   @db.ObjectId
+  productId  String   @db.ObjectId
+  
+  // Relationships - FIXED: No cascade delete on product
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  // Validation
+  @@index([customerId])
+  @@index([productId])
+  @@index([rating])
+  
+  @@map("reviews")
+}
+
+// Cart Entity - Shopping cart management
+model Cart {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt  DateTime   @default(now())
+  
+  // Foreign Keys
+  customerId String     @unique @db.ObjectId
+  
+  // Relationships
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  
+  @@map("carts")
+}
+
+// CartItem Entity - Items in shopping cart
+model CartItem {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int
+  addedAt   DateTime @default(now()) // Track when item was added
+  
+  // Foreign Keys
+  cartId    String @db.ObjectId
+  productId String @db.ObjectId
+  
+  // Relationships - FIXED: No cascade delete on product
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Prevent duplicate products in same cart
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+  
+  @@map("cartItems")
+}
