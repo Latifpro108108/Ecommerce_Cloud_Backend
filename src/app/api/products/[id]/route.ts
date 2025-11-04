@@ -30,6 +30,8 @@ export async function GET(
             isVerified: true,
             isActive: true,
             rating: true,
+            storeDescription: true,
+            storeLogo: true,
           },
         },
         reviews: {
@@ -94,17 +96,23 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
-    const { 
-      productName, 
-      description, 
-      price, 
-      stockQuantity, 
-      categoryId, 
+    const {
+      productName,
+      description,
+      price,
+      stockQuantity,
+      categoryId,
       imageURL,
+      galleryImages,
       sku,
       brand,
       weight,
-      isActive 
+      isActive,
+      highlights,
+      deliveryInfo,
+      returnPolicy,
+      videoURL,
+      specifications,
     } = body;
 
     // Check if product exists
@@ -153,7 +161,8 @@ export async function PUT(
       updateData.stockQuantity = stockValue;
     }
     if (categoryId) updateData.categoryId = categoryId;
-    if (imageURL !== undefined) updateData.imageURL = imageURL;
+    if (imageURL !== undefined) updateData.imageURL = imageURL || null;
+    if (galleryImages !== undefined) updateData.galleryImages = Array.isArray(galleryImages) ? galleryImages : [];
     if (sku !== undefined) updateData.sku = sku;
     if (brand !== undefined) updateData.brand = brand;
     if (weight !== undefined) {
@@ -167,6 +176,13 @@ export async function PUT(
         );
       }
       updateData.weight = weight ? parseFloat(weight) : null;
+    }
+    if (highlights !== undefined) updateData.highlights = Array.isArray(highlights) ? highlights : [];
+    if (deliveryInfo !== undefined) updateData.deliveryInfo = deliveryInfo || null;
+    if (returnPolicy !== undefined) updateData.returnPolicy = returnPolicy || null;
+    if (videoURL !== undefined) updateData.videoURL = videoURL || null;
+    if (specifications !== undefined && typeof specifications === 'object') {
+      updateData.specifications = specifications;
     }
     if (isActive !== undefined) updateData.isActive = isActive;
 

@@ -1,0 +1,384 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  FaShoppingCart,
+  FaBars,
+  FaTimes,
+  FaBox,
+  FaTags,
+  FaTruck,
+  FaStar,
+} from "react-icons/fa";
+import { FiChevronDown } from "react-icons/fi";
+
+const CART_KEY = "gomart:cart";
+
+type SessionUser = {
+  firstName?: string;
+  lastName?: string;
+  email: string;
+};
+
+type Category = {
+  id: string;
+  categoryName: string;
+};
+
+type CartSnapshot = {
+  items: Array<{ productId: string; quantity: number }>;
+};
+
+function readCartCount(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const stored = localStorage.getItem(CART_KEY);
+    const snapshot: CartSnapshot["items"] = stored ? JSON.parse(stored) : [];
+    return snapshot.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  } catch (error) {
+    return 0;
+  }
+}
+
+export default function Navigation() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.data?.categories || []);
+        }
+      } catch (error) {
+        setCategories([]);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    function loadUser() {
+      try {
+        const stored = localStorage.getItem("gomart:user");
+        setUser(stored ? JSON.parse(stored) : null);
+      } catch (error) {
+        setUser(null);
+      }
+    }
+
+    function loadCart() {
+      setCartCount(readCartCount());
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === "gomart:user") {
+        loadUser();
+      }
+      if (event.key === CART_KEY) {
+        loadCart();
+      }
+    }
+
+    loadUser();
+    loadCart();
+    window.addEventListener("storage", handleStorage);
+
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const displayName = useMemo(() => {
+    if (!user) return "";
+    if (user.firstName) return user.firstName;
+    if (user.email) return user.email.split("@")[0];
+    return "Account";
+  }, [user]);
+
+  function handleSignOut() {
+    localStorage.removeItem("gomart:user");
+    setUser(null);
+    setProfileOpen(false);
+    router.push("/");
+  }
+
+  function navClass(target: string) {
+    const base = "text-gray-200 hover:text-white font-medium";
+    return pathname === target ? `${base} text-white` : base;
+  }
+
+  return (
+    <>
+      <nav className="sticky top-0 z-50 bg-transparent">
+        <div className="ghana-ribbon" />
+        <div className="bg-[rgba(7,13,24,0.82)] backdrop-blur-sm border-b border-[rgba(255,255,255,0.05)]">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between h-16">
+              <Link href="/" className="flex items-center space-x-2">
+                <span className="text-2xl font-extrabold text-white tracking-tight">GoMart</span>
+                <span className="text-xl">🇬🇭</span>
+              </Link>
+
+              <div className="hidden md:flex items-center space-x-6">
+                <Link href="/" className={navClass("/")}>Home</Link>
+                <div
+                  className="relative"
+                  onMouseEnter={() => setCategoriesOpen(true)}
+                  onMouseLeave={() => setCategoriesOpen(false)}
+                >
+                  <button
+                    className={`inline-flex items-center gap-1 ${navClass("/ui/categories/list")}`}
+                    onClick={() => setCategoriesOpen((prev) => !prev)}
+                    type="button"
+                  >
+                    Categories <FiChevronDown className="text-sm" />
+                  </button>
+                  {categoriesOpen && categories.length > 0 && (
+                    <div className="absolute left-0 mt-3 w-[540px] rounded-3xl border border-white/10 bg-[rgba(7,13,24,0.96)] shadow-xl p-6 grid grid-cols-2 gap-3">
+                      {categories.slice(0, 10).map((category) => (
+                        <Link
+                          key={category.id}
+                          href={`/ui/products/list?category=${category.id}`}
+                          className="rounded-2xl px-3 py-2 text-sm text-gray-200 hover:bg-white/10"
+                          onClick={() => setCategoriesOpen(false)}
+                        >
+                          {category.categoryName}
+                        </Link>
+                      ))}
+                      <Link
+                        href="/ui/categories/list"
+                        className="col-span-2 mt-2 rounded-2xl border border-white/10 px-3 py-2 text-center text-xs text-gray-300 hover:bg-white/10"
+                        onClick={() => setCategoriesOpen(false)}
+                      >
+                        View all categories →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+                <Link href="/ui/products/list" className={navClass("/ui/products/list")}>Products</Link>
+                <Link href="/ui/vendors/list" className={navClass("/ui/vendors/list")}>Vendors</Link>
+                <Link href="/ui/orders/list" className={navClass("/ui/orders/list")}>Orders</Link>
+              </div>
+
+              <div className="hidden md:flex items-center space-x-4">
+                <Link href="/ui/cart" className="relative text-gray-200 hover:text-white">
+                  <FaShoppingCart className="text-2xl" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-[var(--secondary)] text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-lg px-1">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+
+                {!user ? (
+                  <div className="flex items-center gap-3">
+                    <Link href="/ui/customers/login" className="btn-primary text-sm">
+                      Sign In
+                    </Link>
+                    <Link href="/ui/customers/register" className="btn-accent text-sm">
+                      Sign Up
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <button
+                      onClick={() => setProfileOpen((prev) => !prev)}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-[rgba(255,255,255,0.05)] px-3 py-2 text-sm font-semibold text-white hover:border-white/20"
+                    >
+                      <span>{displayName}</span>
+                      <FiChevronDown />
+                    </button>
+                    {profileOpen && (
+                      <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[rgba(7,13,24,0.95)] border border-white/10 shadow-xl p-2 text-sm text-gray-200">
+                        <p className="px-3 py-2 text-xs uppercase tracking-[0.3em] text-gray-500">Account</p>
+                        <Link
+                          href="/profile"
+                          onClick={() => setProfileOpen(false)}
+                          className="block rounded-xl px-3 py-2 hover:bg-white/10"
+                        >
+                          View Profile
+                        </Link>
+                        <Link
+                          href="/ui/vendors/new"
+                          onClick={() => setProfileOpen(false)}
+                          className="block rounded-xl px-3 py-2 hover:bg-white/10"
+                        >
+                          Register as Vendor
+                        </Link>
+                        <button
+                          onClick={handleSignOut}
+                          className="mt-2 w-full rounded-xl px-3 py-2 text-left hover:bg-white/10 text-[var(--secondary)]"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="md:hidden text-gray-100"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <FaTimes className="text-2xl" /> : <FaBars className="text-2xl" />}
+              </button>
+            </div>
+
+            {mobileMenuOpen && (
+              <div className="md:hidden py-4 border-t border-[rgba(255,255,255,0.1)]">
+                <div className="flex flex-col space-y-3">
+                  <Link href="/" className={navClass("/") + " py-2"} onClick={() => setMobileMenuOpen(false)}>
+                    Home
+                  </Link>
+                  <Link
+                    href="/ui/products/list"
+                    className={navClass("/ui/products/list") + " py-2"}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Products
+                  </Link>
+                  <Link
+                    href="/ui/vendors/list"
+                    className={navClass("/ui/vendors/list") + " py-2"}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Vendors
+                  </Link>
+                  <Link
+                    href="/ui/orders/list"
+                    className={navClass("/ui/orders/list") + " py-2"}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Orders
+                  </Link>
+                  <Link
+                    href="/ui/cart"
+                    className={`py-2 ${navClass("/ui/cart")}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Cart ({cartCount})
+                  </Link>
+
+                  {!user ? (
+                    <div className="flex gap-3 pt-2">
+                      <Link
+                        href="/ui/customers/login"
+                        className="btn-primary text-sm flex-1 text-center"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/ui/customers/register"
+                        className="btn-accent text-sm flex-1 text-center"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="bg-[rgba(255,255,255,0.03)] border border-white/10 rounded-2xl p-3 space-y-2">
+                      <p className="text-xs text-gray-400 uppercase tracking-[0.3em]">
+                        {displayName}
+                      </p>
+                      <Link
+                        href="/profile"
+                        className="block rounded-xl px-3 py-2 text-gray-200 hover:bg-white/10"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        View Profile
+                      </Link>
+                      <Link
+                        href="/ui/vendors/new"
+                        className="block rounded-xl px-3 py-2 text-gray-200 hover:bg-white/10"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Register as Vendor
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full rounded-xl px-3 py-2 text-left text-[var(--secondary)] hover:bg-white/10"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-[rgba(15,22,37,0.95)] border-b border-[rgba(255,255,255,0.05)]">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center space-x-6 py-2 overflow-x-auto">
+              <span className="text-xs text-gray-400 font-semibold whitespace-nowrap">MANAGE:</span>
+              <Link
+                href="/ui/products/new"
+                className="text-xs text-gray-300 hover:text-white flex items-center gap-1 whitespace-nowrap"
+              >
+                <FaBox /> Add Product
+              </Link>
+              <Link
+                href="/ui/categories/new"
+                className="text-xs text-gray-300 hover:text-white flex items-center gap-1 whitespace-nowrap"
+              >
+                <FaTags /> Add Category
+              </Link>
+              <Link
+                href="/ui/couriers/list"
+                className="text-xs text-gray-300 hover:text-white flex items-center gap-1 whitespace-nowrap"
+              >
+                <FaTruck /> Couriers
+              </Link>
+              <Link
+                href="/ui/reviews/list"
+                className="text-xs text-gray-300 hover:text-white flex items-center gap-1 whitespace-nowrap"
+              >
+                <FaStar /> Reviews
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[rgba(7,13,24,0.95)] border-t border-white/10 backdrop-blur md:hidden">
+        <div className="grid grid-cols-4 text-xs text-gray-300">
+          <Link href="/" className="flex flex-col items-center justify-center py-3 gap-1">
+            <span>Home</span>
+          </Link>
+          <Link href="/ui/products/list" className="flex flex-col items-center justify-center py-3 gap-1">
+            <span>Products</span>
+          </Link>
+          <Link href="/ui/cart" className="flex flex-col items-center justify-center py-3 gap-1">
+            <span>Cart ({cartCount})</span>
+          </Link>
+          <Link
+            href={user ? "/profile" : "/ui/customers/login"}
+            className="flex flex-col items-center justify-center py-3 gap-1"
+          >
+            <span>{user ? "Profile" : "Account"}</span>
+          </Link>
+        </div>
+      </nav>
+    </>
+  );
+}
+
+
+
+
+

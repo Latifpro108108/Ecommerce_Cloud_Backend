@@ -124,18 +124,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      productName, 
-      description, 
-      price, 
-      stockQuantity, 
-      categoryId, 
-      vendorId, 
+    const {
+      productName,
+      description,
+      price,
+      stockQuantity,
+      categoryId,
+      vendorId,
       imageURL,
+      galleryImages,
       sku,
       brand,
       weight,
-      isActive = true 
+      isActive = true,
+      highlights,
+      deliveryInfo,
+      returnPolicy,
+      videoURL,
+      specifications,
     } = body;
 
     // Validation
@@ -219,11 +225,17 @@ export async function POST(request: NextRequest) {
         stockQuantity: parseInt(stockQuantity),
         categoryId,
         vendorId,
-        imageURL,
+        imageURL: imageURL || null,
+        galleryImages: Array.isArray(galleryImages) ? galleryImages : [],
         sku,
         brand,
         weight: weight ? parseFloat(weight) : null,
         isActive,
+        highlights: Array.isArray(highlights) ? highlights : [],
+        deliveryInfo: deliveryInfo || null,
+        returnPolicy: returnPolicy || null,
+        videoURL: videoURL || null,
+        specifications: specifications && typeof specifications === 'object' ? specifications : undefined,
       },
       include: {
         category: {

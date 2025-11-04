@@ -55,6 +55,20 @@ model Vendor {
   city            String
   businessLicense String?  // Business registration number
   taxId           String?  // Tax identification
+  storeDescription String?
+  storeLogo       String?
+  storeBanner     String?
+  whatsappNumber  String?
+  instagramHandle String?
+  facebookPage    String?
+  payoutMethod    String?
+  mobileMoneyNetwork String?
+  mobileMoneyNumber  String?
+  bankName        String?
+  bankAccountName String?
+  bankAccountNumber String?
+  deliveryRegions String[] @default([])
+  featured        Boolean  @default(false)
   joinedDate      DateTime @default(now())
   isVerified      Boolean  @default(false)
   isActive        Boolean  @default(true) // Account status
@@ -82,6 +96,12 @@ model Product {
   sku          String?  // Stock Keeping Unit
   brand        String?
   weight       Float?   // For shipping calculations (kg)
+  galleryImages String[] @default([])
+  highlights   String[] @default([])
+  deliveryInfo String?
+  returnPolicy String?
+  videoURL     String?
+  specifications Json?
   isActive     Boolean  @default(true) // Soft delete flag
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

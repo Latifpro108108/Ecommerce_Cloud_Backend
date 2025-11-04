@@ -43,7 +43,19 @@ export async function GET(request: NextRequest) {
       cart = await prisma.cart.create({
         data: { customerId },
         include: {
-          cartItems: true,
+          cartItems: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  productName: true,
+                  price: true,
+                  imageURL: true,
+                  stockQuantity: true,
+                },
+              },
+            },
+          },
         },
       });
     }

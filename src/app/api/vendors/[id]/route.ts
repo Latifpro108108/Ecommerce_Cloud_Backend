@@ -82,6 +82,20 @@ export async function PUT(
       isVerified,
       isActive,
       rating,
+      storeDescription,
+      storeLogo,
+      storeBanner,
+      whatsappNumber,
+      instagramHandle,
+      facebookPage,
+      payoutMethod,
+      mobileMoneyNetwork,
+      mobileMoneyNumber,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      deliveryRegions,
+      featured,
     } = body;
 
     // Check if vendor exists
@@ -108,10 +122,26 @@ export async function PUT(
     if (city) updateData.city = city;
     if (businessLicense !== undefined) updateData.businessLicense = businessLicense;
     if (taxId !== undefined) updateData.taxId = taxId;
+    if (storeDescription !== undefined) updateData.storeDescription = storeDescription;
+    if (storeLogo !== undefined) updateData.storeLogo = storeLogo;
+    if (storeBanner !== undefined) updateData.storeBanner = storeBanner;
+    if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber;
+    if (instagramHandle !== undefined) updateData.instagramHandle = instagramHandle;
+    if (facebookPage !== undefined) updateData.facebookPage = facebookPage;
+    if (payoutMethod !== undefined) updateData.payoutMethod = payoutMethod;
+    if (mobileMoneyNetwork !== undefined) updateData.mobileMoneyNetwork = mobileMoneyNetwork;
+    if (mobileMoneyNumber !== undefined) updateData.mobileMoneyNumber = mobileMoneyNumber;
+    if (bankName !== undefined) updateData.bankName = bankName;
+    if (bankAccountName !== undefined) updateData.bankAccountName = bankAccountName;
+    if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
+    if (deliveryRegions !== undefined) {
+      updateData.deliveryRegions = Array.isArray(deliveryRegions) ? deliveryRegions : [];
+    }
+    if (featured !== undefined) updateData.featured = featured;
     if (isVerified !== undefined) updateData.isVerified = isVerified;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (rating !== undefined) {
-      if (rating && (rating < 0 || rating > 5)) {
+      if (rating < 0 || rating > 5) {
         return NextResponse.json(
           {
             status: 'error',
